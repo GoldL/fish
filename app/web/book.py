@@ -2,9 +2,8 @@
 # @Time    : 2020/4/2 下午3:21
 # @Author  : iGolden
 # @Software: PyCharm
-import json
 
-from flask import jsonify, request
+from flask import request, flash, render_template
 
 from app.view_models.book import BookCollection
 from app.web.__inint__ import web
@@ -33,6 +32,11 @@ def search():
         else:
             yushu_book.search_by_keyword(q, page)
         books.fill(yushu_book, q)
-        return json.dumps(books, default=lambda o: o.__dict__)
     else:
-        return jsonify(form.errors)
+        flash("搜索的关键字不符合要求，请重新输入关键字")
+    return render_template("search_result.html", books=books)
+
+
+@web.route("/book/<isbn>/detail")
+def book_detail(isbn):
+    pass
