@@ -3,7 +3,7 @@
 # @Author  : iGolden
 # @Software: PyCharm
 from flask import Flask
-from app.models.book import db
+from app.models.base import db
 
 
 def create_app():
