@@ -1,7 +1,10 @@
-from flask import render_template, request
+from flask import render_template, request, redirect, url_for, flash
 
-from app.forms.auth import RegisterForm
+from app.forms.auth import RegisterForm, LoginForm
+from app.models.base import db
+from app.models.user import User
 from app.web.__inint__ import web
+from flask_login import login_user
 
 __author__ = '七月'
 
@@ -9,12 +12,30 @@ __author__ = '七月'
 @web.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegisterForm(request.form)
-    return render_template('auth/register.html', form={'data': {}})
+    if request.method == 'POST' and form.validate():
+        user = User()
+        user.set_attr(form.data)
+        db.session.add(user)
+        db.session.commit()
+        return redirect(url_for('web.login'))
+    return render_template('auth/register.html', form=form)
 
 
 @web.route('/login', methods=['GET', 'POST'])
 def login():
-    pass
+    form = LoginForm(request.form)
+    if request.method == 'POST' and form.validate():
+        user = User.query.filter_by(email=form.email.data).first()
+        if user and user.ckeck_password(form.password.data):
+            login_user(user, remember=True)
+
+            next = request.args.get('next')
+            if not next or not next.startswith('/'):
+                next = url_for('web.index')
+            return redirect(next)
+        else:
+            flash('账号不存在或密码错误')
+    return render_template('auth/login.html', form=form)
 
 
 @web.route('/reset/password', methods=['GET', 'POST'])

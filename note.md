@@ -79,14 +79,26 @@ class HTTP:
         return r.json() if return_json else r.text
 ```
 ##### 8.[wtforms](http://flask123.sinaapp.com/article/32/)
-```
-from wtforms import Form, StringField
-from wtforms.validators import Length
-class SearchForm(Form):
-    q = StringField(validators=[Length(min=1, max=30)])
+```python
+from wtforms import Form, StringField, PasswordField
+from wtforms.validators import DataRequired, Length, Email, ValidationError
+
+from app.models.user import User
+
+class RegisterForm(EmailForm):
+    password = PasswordField(validators=[DataRequired('密码不可以为空，请输入你的密码'), Length(6, 32, message='密码有误')])
+    nickname = StringField(validators=[DataRequired(), Length(2, 10, message='昵称至少需要两个字符，最多10个字符')])
+
+    def validate_email(self, field):
+        if User.query.filter_by(email=field.data).first():
+            raise ValidationError('电子邮箱已被注册')
+
+    def validate_nickname(self, field):
+        if User.query.filter_by(nickname=field.data).first():
+            raise ValidationError('用户昵称已被注册')
 ```
 ##### 9. [flask-sqlalchemy](http://www.pythondoc.com/flask-sqlalchemy/quickstart.html)
-```
+```python
 # Book Model
 from sqlalchemy import Column, Integer, String
 from flask_sqlalchemy import SQLAlchemy
@@ -108,7 +120,37 @@ class Book(db.Model):
     
 # 注册
 db.init_app(app)
-db.create_all(app=app)
+with app.app_context():
+    db.create_all(app=app)
+
+# 基础类
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Column, SmallInteger
+
+db = SQLAlchemy()
+
+
+class Base(db.Model):
+    #  不创建表
+    __abstract__ = True
+    status = Column(SmallInteger, default=1)
+    
+    def set_attr(self, attr_dic):
+    for key, value in attr_dic.items():
+        if hasattr(self, key) and key != 'id':
+            setattr(self, key, value)
+# 使用User表
+@web.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegisterForm(request.form)
+    if request.method == 'POST' and form.validate():
+        user = User()
+        user.set_attr(form.data)
+        // 创建user表
+        db.session.add(user)
+        db.session.commit()
+        redirect(url_for('web.login'))
+        return render_template('auth/register.html', form=form)
 ```
 ##### 10. [cymysql](https://pypi.org/project/cymysql/)
 ##### 11. [进程和线程](https://www.liaoxuefeng.com/wiki/1016959663602400/1017627212385376)
@@ -120,11 +162,38 @@ json.dumps(books, default=lambda o: o.__dict__)
 ```
 app = Flask(__name__, static_folder='', static_url_path='')
 ```
-##### 14[Jinja2](https://www.w3cschool.cn/yshfid/)
-##### 15[url_for](https://www.cnblogs.com/zxt-cn/p/9171960.html)
-##### 16[filter](https://www.runoob.com/python/python-func-filter.html)
+##### 14.[Jinja2](https://www.w3cschool.cn/yshfid/)
+##### 15.[url_for](https://www.cnblogs.com/zxt-cn/p/9171960.html)
+##### 16.[filter](https://www.runoob.com/python/python-func-filter.html)
 ```
     def intro(self):
         intro = filter(lambda x: True if x else False, [self.author, self.publisher, self.price])
         return '/'.join(intro)
+```
+##### 17.[`flask-login`](https://flask-login.readthedocs.io/en/latest/)
+```python
+# 注册
+from flask_login import LoginManager
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+# 在用户model中继承UserMixin
+from flask_login import UserMixin
+from app import login_manager
+
+class User(UserMixin, Base):
+
+@login_manager.user_loader
+def get_user(uid):
+    return User.query.get(int(uid))
+
+# 使用
+from flask_login import login_user
+login_user(user, remember=True)
+
+```
+##### 18.[`with`](https://blog.csdn.net/lxy210781/article/details/81176687)
+```python
+with open(r'c:\test.txt', 'r') as f:
+    data = f.read()
 ```
