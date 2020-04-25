@@ -10,6 +10,7 @@ from app.libs.enums import PendingStatus
 from app.models.base import db
 from app.models.drift import Drift
 from app.models.gift import Gift
+from app.models.user import User
 from app.view_models.book import BookViewModel
 from app.view_models.drift import DriftCollection
 from app.web.__inint__ import web
@@ -49,8 +50,18 @@ def pending():
 
 
 @web.route('/drift/<int:did>/reject')
+@login_required
 def reject_drift(did):
-    pass
+    with db.auto_commit():
+        # requester_id=current_user.id 防止超权现象
+        drift = Drift.query.filter_by(
+            id=did, gifter_id=current_user.id).first_or_404()
+        drift.pending = PendingStatus.Reject
+
+        requester = User.query.get_or_404(drift.requester_id)
+        requester.beans += 1
+
+    return redirect(url_for('web.pending'))
 
 
 @web.route('/drift/<int:did>/redraw')
