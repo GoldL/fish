@@ -197,3 +197,98 @@ login_user(user, remember=True)
 with open(r'c:\test.txt', 'r') as f:
     data = f.read()
 ```
+##### 19.[事务](https://www.cnblogs.com/icemonkey/p/10503766.html)
+```python
+# 事务回滚
+try:
+    gift = Gift()
+    gift.isbn = isbn
+    gift.uid = current_user.id
+    current_user.beans += current_app.config['BEANS_UPLOAD_ONE_BOOK']
+    db.session.add(gift)
+    db.session.commit()
+except Exception as e:
+    db.session.rollback()
+    raise e
+```
+##### 20.[上下文管理器类和上下文管理器装饰器`contextmanager`](https://blog.csdn.net/weixin_42359464/article/details/80742387)
+```python
+# 重新事件回滚机制封装
+from flask_sqlalchemy import SQLAlchemy as _SQLAlchemy
+from sqlalchemy import Column, SmallInteger
+from contextlib import contextmanager
+
+
+class SQLAlchemy(_SQLAlchemy):
+    @contextmanager
+    def auto_commit(self):
+        try:
+            yield
+            self.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            raise e
+
+
+db = SQLAlchemy()
+```
+##### 21.重写`filter_by`
+```python
+from flask_sqlalchemy import SQLAlchemy as _SQLAlchemy, BaseQuery
+class Query(BaseQuery):
+    def filter_by(self, **kwargs):
+        if 'status' not in kwargs.keys():
+            kwargs['status'] = 1
+        return super(Query, self).filter_by(**kwargs)
+        
+        
+db = SQLAlchemy(query_class=Query)
+```
+##### [`namedtuple`](https://www.runoob.com/note/25726)
+```
+from collections import namedtuple
+
+EachGiftWishCount = namedtuple('EachGiftWishCount', ['count', 'isbn'])
+```
+22.[`flask-mail`](http://www.pythondoc.com/flask-mail/)
+```
+from flask_mail import Mail
+mail = Mail()
+mail.init_app(app)
+
+# 声明方法
+from flask import current_app, render_template
+from flask_mail import Message
+
+from app import mail
+
+
+def send_mail(to, subject, template, **kwargs):
+    msg = Message(
+        '[鱼书]' + ' ' + subject,
+        sender=current_app.config['MAIL_USERNAME'],
+        recipients=[to])
+    msg.html = render_template(template, **kwargs)
+    mail.send(msg)
+# 使用
+send_mail(form.email.data, '重置你的密码', 'email/reset_password.html', user=user, token='1123')
+```
+###### 生成token
+```
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+s = Serializer(current_app.config['SECRET_KEY'], expiration)
+        return s.dumps({'id', self.id}).decode('utf-8')
+        
+@classmethod
+    def reset_password(cls, token, new_password):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token.encode('utf-8'))
+        except:
+            return False
+        uid = data.get('id')
+        with db.auto_commit():
+            user = User.query.get(uid)
+            user.password = new_password
+        return True
+```

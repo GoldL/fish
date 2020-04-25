@@ -2,11 +2,13 @@
 # @Time    : 2020/4/20 下午11:42
 # @Author  : iGolden
 # @Software: PyCharm
+from flask import current_app
 from sqlalchemy import Column, Integer, Float, String, Boolean
 from werkzeug.security import generate_password_hash, check_password_hash
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 from app.libs.helper import is_isbn_or_key
-from app.models.base import Base
+from app.models.base import Base, db
 from flask_login import UserMixin
 from app import login_manager
 from app.models.gift import Gift
@@ -54,6 +56,23 @@ class User(UserMixin, Base):
             return True
         else:
             return False
+
+    def generate_token(self, expiration=600):
+        s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
+        return s.dumps({'id': self.id}).decode('utf-8')
+
+    @classmethod
+    def reset_password(cls, token, new_password):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token.encode('utf-8'))
+        except:
+            return False
+        uid = data.get('id')
+        with db.auto_commit():
+            user = User.query.get(uid)
+            user.password = new_password
+        return True
 
 
 @login_manager.user_loader
