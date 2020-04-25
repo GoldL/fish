@@ -2,15 +2,19 @@
 # @Time    : 2020/4/20 下午11:42
 # @Author  : iGolden
 # @Software: PyCharm
+from math import floor
+
 from flask import current_app
 from sqlalchemy import Column, Integer, Float, String, Boolean
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
+from app.libs.enums import PendingStatus
 from app.libs.helper import is_isbn_or_key
 from app.models.base import Base, db
 from flask_login import UserMixin
 from app import login_manager
+from app.models.drift import Drift
 from app.models.gift import Gift
 from app.models.wish import Wish
 from app.spider.yushu_book import YuShuBook
@@ -31,11 +35,20 @@ class User(UserMixin, Base):
 
     @property
     def password(self):
-        pass
+        return self._password
 
     @password.setter
     def password(self, raw):
         self._password = generate_password_hash(raw)
+
+    @property
+    def summary(self):
+        return dict(
+            nikename=self.nickname,
+            beans=self.beans,
+            email=self.email,
+            send_receive=str(self.send_counter) + '/' + str(self.receive_counter)
+        )
 
     def ckeck_password(self, raw):
         return check_password_hash(self._password, raw)
@@ -52,10 +65,16 @@ class User(UserMixin, Base):
         # 既不在赠送清单中，也不再心愿清单中才能添加
         gifting = Gift.query.filter_by(uid=self.id, isbn=isbn, launched=False).first()
         wishing = Wish.query.filter_by(uid=self.id, isbn=isbn, launched=False).first()
-        if not gifting and not wishing:
-            return True
-        else:
+        return not gifting and not wishing
+
+    def can_send_drifts(self):
+        if self.beans < 1:
             return False
+        success_gift_count = Gift.query.filter_by(
+            uid=self.id, launched=True).count()
+        success_receive_count = Drift.query.filter_by(
+            requester_id=self.id, pending=PendingStatus.Success).count()
+        return floor(success_receive_count / 2) <= success_gift_count
 
     def generate_token(self, expiration=600):
         s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)

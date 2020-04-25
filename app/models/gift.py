@@ -25,6 +25,9 @@ class Gift(Base):
         yushu_book.search_by_isbn(self.isbn)
         return yushu_book.first
 
+    def is_yourself_gift(self, uid):
+        return uid == self.uid
+
     @classmethod
     def get_wish_counts(cls, isbn_list):
         from app.models.wish import Wish
