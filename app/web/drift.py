@@ -11,6 +11,7 @@ from app.models.base import db
 from app.models.drift import Drift
 from app.models.gift import Gift
 from app.models.user import User
+from app.models.wish import Wish
 from app.view_models.book import BookViewModel
 from app.view_models.drift import DriftCollection
 from app.web.__inint__ import web
@@ -78,12 +79,25 @@ def redraw_drift(did):
 
 
 @web.route('/drift/<int:did>/mailed')
+@login_required
 def mailed_drift(did):
-    pass
+    with db.auto_commit():
+        # 更改鱼漂状态位成功
+        drift = Drift.query.filter_by(
+            id=did, gifter_id=current_user.id).first_or_404()
+        drift.pending = PendingStatus.Success
 
+        # 赠送一个鱼豆
+        current_user.beans += 1
 
-def save_drift(drift_form, current_gift):
-    pass
+        # 完成赠送
+        gift = Gift.query.get_or_404(drift.gift_id)
+        gift.launched = True
+
+        # 完成心愿
+        Wish.query.filter_by(
+            isbn=drift.isbn, uid=drift.requester_id, launched=False).update({Wish.launched: True})
+    return redirect(url_for('web.pending'))
 
 
 def save_drift(drift_form, current_gift):
