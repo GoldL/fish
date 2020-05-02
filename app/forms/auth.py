@@ -10,7 +10,7 @@ from app.models.user import User
 
 class EmailForm(Form):
     email = StringField(
-        validators=[DataRequired(), Length(8, 64, message='邮箱地址在长度8-64字符之间'), Email(message='电子邮箱不符合规范')])
+        validators=[DataRequired(), Length(8, 64, message='邮箱地址在长度8-64字符之间')])
 
 
 class RegisterForm(EmailForm):
