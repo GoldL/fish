@@ -16,7 +16,6 @@ class BookViewModel:
         self.image = book['image']
         self.pubdate = book['pubdate']
         self.binding = book['binding']
-
     @property
     def intro(self):
         intro = filter(lambda x: True if x else False, [self.author, self.publisher, self.price])
